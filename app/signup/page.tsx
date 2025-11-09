@@ -3,23 +3,43 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useSupabaseClient } from "@/lib/supabase/use-supabase"
 import { AuthForm } from "@/components/auth-form"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Leaf } from "lucide-react"
 
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const supabase = useSupabaseClient()
 
-  const handleSignup = async (data: { email: string; password: string; name?: string }) => {
+  const handleSignup = async (data: {
+    email: string
+    password: string
+    name?: string
+  }) => {
     setIsLoading(true)
+    setError(null)
     try {
-      // Simulated signup - replace with actual auth logic
-      console.log("Signup attempt:", data)
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      router.push("/onboarding")
-    } catch (error) {
-      console.error("Signup error:", error)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/onboarding`,
+          data: {
+            full_name: data.name || "",
+          },
+        },
+      })
+
+      if (authError) throw authError
+
+      if (authData.user) {
+        router.push("/onboarding")
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Signup failed")
     } finally {
       setIsLoading(false)
     }
@@ -46,6 +66,8 @@ export default function SignupPage() {
 
           <CardContent className="space-y-6">
             <AuthForm type="signup" onSubmit={handleSignup} isLoading={isLoading} />
+
+            {error && <div className="text-red-500 text-sm text-center">{error}</div>}
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">

@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/app-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Edit2, Save, X, Award, TrendingUp, Zap, LogOut } from "lucide-react"
+import { useSupabaseClient } from "@/lib/supabase/use-supabase"
 
 interface UserProfile {
   name: string
@@ -18,6 +19,9 @@ interface UserProfile {
 
 export default function ProfilePage() {
   const router = useRouter()
+  const supabase = useSupabaseClient()
+  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<UserProfile>({
     name: "Sarah Mitchell",
     email: "sarah.mitchell@example.com",
@@ -29,6 +33,41 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editedProfile, setEditedProfile] = useState(profile)
   const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const {
+          data: { user: currentUser },
+        } = await supabase.auth.getUser()
+
+        if (!currentUser) {
+          router.push("/login")
+          return
+        }
+
+        setUser(currentUser)
+        // Update profile with user data
+        setProfile((prev) => ({
+          ...prev,
+          email: currentUser.email || prev.email,
+          name: currentUser.user_metadata?.full_name || prev.name,
+        }))
+        setEditedProfile((prev) => ({
+          ...prev,
+          email: currentUser.email || prev.email,
+          name: currentUser.user_metadata?.full_name || prev.name,
+        }))
+      } catch (error) {
+        console.error("[v0] Auth check error:", error)
+        router.push("/login")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [supabase, router])
 
   const handleSave = () => {
     setProfile(editedProfile)
@@ -42,8 +81,23 @@ export default function ProfilePage() {
     setIsEditing(false)
   }
 
-  const handleSignOut = () => {
-    router.push("/login")
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      router.push("/login")
+    } catch (error) {
+      console.error("[v0] Logout error:", error)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-foreground/70">Loading...</p>
+        </div>
+      </AppLayout>
+    )
   }
 
   const achievements = [
@@ -113,6 +167,7 @@ export default function ProfilePage() {
                       value={editedProfile.email}
                       onChange={(e) => setEditedProfile({ ...editedProfile, email: e.target.value })}
                       className="bg-input border-border text-foreground"
+                      disabled
                     />
                   </div>
 

@@ -1,3 +1,6 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -14,6 +17,8 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { TrendingUp, Calendar, Award } from "lucide-react"
+import { useSupabaseClient } from "@/lib/supabase/use-supabase"
+import { useRouter } from "next/navigation"
 
 const moodData = [
   { day: "Mon", mood: 7, sleep: 6.5 },
@@ -50,7 +55,46 @@ const quotes = [
 ]
 
 export default function DashboardPage() {
+  const [user, setUser] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+  const supabase = useSupabaseClient()
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const {
+          data: { user: currentUser },
+        } = await supabase.auth.getUser()
+
+        if (!currentUser) {
+          router.push("/login")
+          return
+        }
+
+        setUser(currentUser)
+      } catch (error) {
+        console.error("[v0] Auth check error:", error)
+        router.push("/login")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [supabase, router])
+
   const randomQuote = quotes[Math.floor(Math.random() * quotes.length)]
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-foreground/70">Loading...</p>
+        </div>
+      </AppLayout>
+    )
+  }
 
   return (
     <AppLayout>

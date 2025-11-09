@@ -3,23 +3,31 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useSupabaseClient } from "@/lib/supabase/use-supabase"
 import { AuthForm } from "@/components/auth-form"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Leaf } from "lucide-react"
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const supabase = useSupabaseClient()
 
   const handleLogin = async (data: { email: string; password: string }) => {
     setIsLoading(true)
+    setError(null)
     try {
-      // Simulated login - replace with actual auth logic
-      console.log("Login attempt:", data)
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
+
+      if (authError) throw authError
+
       router.push("/dashboard")
-    } catch (error) {
-      console.error("Login error:", error)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed")
     } finally {
       setIsLoading(false)
     }
@@ -46,6 +54,8 @@ export default function LoginPage() {
 
           <CardContent className="space-y-6">
             <AuthForm type="login" onSubmit={handleLogin} isLoading={isLoading} />
+
+            {error && <div className="text-red-500 text-sm text-center">{error}</div>}
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
