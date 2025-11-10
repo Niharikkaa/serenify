@@ -85,12 +85,18 @@ export default function DashboardPage() {
   const fetchHabitData = async () => {
     try {
       const startOfWeek = getStartOfWeek()
-      
-      // First, get all habits
+      // Ensure we have an authenticated user (don't rely on `user` state which may not be set yet)
+      const { data: { user: currentUser } = {}, error: userErr } = await supabase.auth.getUser()
+      if (userErr || !currentUser) {
+        console.warn('[dashboard] fetchHabitData: no authenticated user, skipping habit fetch', userErr)
+        return
+      }
+
+      // First, get all habits for the current user
       const { data: habits, error: habitsError } = await supabase
         .from('habits')
         .select('id, name, category')
-        .eq('user_id', user?.id)
+        .eq('user_id', currentUser.id)
 
       if (habitsError) throw habitsError
 
@@ -120,7 +126,8 @@ export default function DashboardPage() {
       setHabitData(completionData)
       setTotalHabitsCompleted(completions?.length || 0)
     } catch (err) {
-      console.error('Error fetching habit data:', err)
+      // Log more details to help debugging
+      console.error('Error fetching habit data:', err, err && (err instanceof Error ? err.message : JSON.stringify(err)))
     }
   }
 
