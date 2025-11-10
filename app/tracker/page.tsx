@@ -20,6 +20,8 @@ export default function TrackerPage() {
   const [error, setError] = useState<string | null>(null)
   const [recentCheckins, setRecentCheckins] = useState<any[]>([])
   const router = useRouter()
+  const [aiInsight, setAiInsight] = useState<string>("")
+  const [loadingInsight, setLoadingInsight] = useState(false)
 
   const fetchRecentCheckins = async () => {
     try {
@@ -44,9 +46,26 @@ export default function TrackerPage() {
     }
   }
 
+  const fetchAIInsights = async () => {
+  setLoadingInsight(true)
+  try {
+    const response = await fetch('/api/ai-insights', {
+      method: 'POST',
+    })
+    const data = await response.json()
+    setAiInsight(data.suggestion)
+  } catch (err) {
+    console.error('Error fetching AI insights:', err)
+    setAiInsight("Unable to generate insights at the moment.")
+  } finally {
+    setLoadingInsight(false)
+  }
+}
+
   useEffect(() => {
-    fetchRecentCheckins()
-  }, [])
+  fetchRecentCheckins()
+  fetchAIInsights()
+}, [])
 
   const handleSave = async () => {
     if (!selectedMood) {
@@ -86,6 +105,7 @@ export default function TrackerPage() {
       
       // Refresh recent check-ins
       fetchRecentCheckins()
+      fetchAIInsights()
       router.refresh()
     } catch (err: any) {
       setError(err.message)
@@ -251,54 +271,97 @@ export default function TrackerPage() {
         </Card>
 
         {/* AI Wellness Insights */}
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Bot className="w-5 h-5 text-accent" /> Weekly AI Insights
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recentCheckins.map((checkin) => {
-              const date = new Date(checkin.created_at)
-              const today = new Date()
-              const yesterday = new Date(today)
-              yesterday.setDate(yesterday.getDate() - 1)
-              
-              let dateLabel
-              if (date.toDateString() === today.toDateString()) {
-                dateLabel = "Today"
-              } else if (date.toDateString() === yesterday.toDateString()) {
-                dateLabel = "Yesterday"
-              } else {
-                dateLabel = date.toLocaleDateString()
-              }
+        {/* AI Wellness Insights */}
+<Card className="bg-gradient-to-br from-accent/10 to-accent/5 border-accent/30">
+  <CardHeader>
+    <CardTitle className="flex items-center gap-2 text-lg">
+      <Bot className="w-5 h-5 text-accent" /> AI Wellness Insights
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-4">
+    {loadingInsight ? (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <span className="ml-2 text-foreground/70">Analyzing your wellness data...</span>
+      </div>
+    ) : aiInsight ? (
+      <div className="p-4 bg-card/50 rounded-lg border border-accent/20">
+        <p className="text-foreground leading-relaxed whitespace-pre-line">{aiInsight}</p>
+      </div>
+    ) : (
+      <p className="text-sm text-foreground/60 text-center py-4">
+        Complete a few check-ins to get personalized insights
+      </p>
+    )}
+    
+    <Button
+      onClick={fetchAIInsights}
+      variant="outline"
+      className="w-full border-accent/30 hover:bg-accent/10"
+      disabled={loadingInsight}
+    >
+      {loadingInsight ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Analyzing...
+        </>
+      ) : (
+        <>
+          <Bot className="w-4 h-4 mr-2" />
+          Refresh Insights
+        </>
+      )}
+    </Button>
+  </CardContent>
+</Card>
 
-              const energyLabels = ["Very Low", "Low", "Medium", "High", "Very High"]
-              
-              return (
-                <div key={checkin.id} className="p-3 bg-muted/50 rounded-lg flex items-center justify-between">
-                  <div>
-                    <p className="text-foreground font-medium">{dateLabel}</p>
-                    <p className="text-xs text-foreground/60 space-x-2">
-                      <span>Mood: {checkin.mood_score}/5</span>
-                      <span>•</span>
-                      <span>Energy: {energyLabels[checkin.energy_level - 1]}</span>
-                      <span>•</span>
-                      <span>Sleep: {checkin.sleep_hours}hrs</span>
-                    </p>
-                    {checkin.notes && (
-                      <p className="text-xs text-foreground/60 mt-1 italic">{checkin.notes}</p>
-                    )}
-                  </div>
-                  <span className="text-2xl">{moodEmojis[checkin.mood_score - 1]}</span>
-                </div>
-              )
-            })}
-            {recentCheckins.length === 0 && (
-              <p className="text-sm text-foreground/60 text-center py-4">No recent check-ins</p>
+{/* Recent Check-ins History */}
+<Card className="bg-card/50 border-border/50">
+  <CardHeader>
+    <CardTitle className="text-lg">Recent Check-ins</CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-3">
+    {recentCheckins.map((checkin) => {
+      const date = new Date(checkin.created_at)
+      const today = new Date()
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      
+      let dateLabel
+      if (date.toDateString() === today.toDateString()) {
+        dateLabel = "Today"
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        dateLabel = "Yesterday"
+      } else {
+        dateLabel = date.toLocaleDateString()
+      }
+
+      const energyLabels = ["Very Low", "Low", "Medium", "High", "Very High"]
+      
+      return (
+        <div key={checkin.id} className="p-3 bg-muted/50 rounded-lg flex items-center justify-between">
+          <div>
+            <p className="text-foreground font-medium">{dateLabel}</p>
+            <p className="text-xs text-foreground/60 space-x-2">
+              <span>Mood: {checkin.mood_score}/5</span>
+              <span>•</span>
+              <span>Energy: {energyLabels[checkin.energy_level - 1]}</span>
+              <span>•</span>
+              <span>Sleep: {checkin.sleep_hours}hrs</span>
+            </p>
+            {checkin.notes && (
+              <p className="text-xs text-foreground/60 mt-1 italic">{checkin.notes}</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+          <span className="text-2xl">{moodEmojis[checkin.mood_score - 1]}</span>
+        </div>
+      )
+    })}
+    {recentCheckins.length === 0 && (
+      <p className="text-sm text-foreground/60 text-center py-4">No recent check-ins</p>
+    )}
+  </CardContent>
+</Card>
       </div>
     </AppLayout>
   )
