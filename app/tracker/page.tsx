@@ -1,5 +1,6 @@
 "use client"
 
+
 import { useEffect, useState } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,6 +14,7 @@ export default function TrackerPage() {
   const router = useRouter()
 
   const [selectedMood, setSelectedMood] = useState<number | null>(null)
+  
   const [energyLevel, setEnergyLevel] = useState<number | null>(null)
   const [sleepHours, setSleepHours] = useState<number>(8)
   const [notes, setNotes] = useState("")
@@ -49,7 +51,7 @@ export default function TrackerPage() {
   const fetchAIInsights = async () => {
     setLoadingInsight(true)
     try {
-      const response = await fetch('/api/ai-insights', {
+      const response = await fetch('/api/ai-insight', {
         method: 'POST',
       })
       const data = await response.json()
@@ -68,69 +70,69 @@ export default function TrackerPage() {
   }, [])
 
   const handleSave = async () => {
-    if (!selectedMood) {
-      setError("Please select a mood")
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      // Get the current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      
-      console.log("Current user:", user)
-      console.log("User error:", userError)
-      
-      if (userError || !user) {
-        throw new Error("Please login to save your mood")
-      }
-
-      const insertData = {
-        user_id: user.id,
-        mood_score: selectedMood,
-        energy_level: energyLevel || 3,
-        sleep_hours: sleepHours,
-        notes: notes || null
-      }
-
-      console.log("Inserting data:", insertData)
-
-      const { data, error } = await supabase.from('moods').insert(insertData).select()
-
-      if (error) {
-        console.error("Full error details:", error)
-        console.error("Error message:", error.message)
-        console.error("Error code:", error.code)
-        throw error
-      }
-
-      console.log("Insert successful:", data)
-
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-      
-      // Reset form
-      setSelectedMood(null)
-      setEnergyLevel(null)
-      setSleepHours(8)
-      setNotes("")
-      
-      // Refresh recent check-ins and AI insights
-      fetchRecentCheckins()
-      fetchAIInsights()
-      router.refresh()
-    } catch (err: any) {
-      console.error("Error saving check-in:", err)
-      setError(err.message)
-      alert(`Error: ${err.message}`)
-    } finally {
-      setLoading(false)
-    }
+  if (!selectedMood) {
+    setError("Please select a mood")
+    return
   }
 
-  const moodEmojis = ["😢", "😟", "😐", "🙂", "😊"]  
+  setLoading(true)
+  setError(null)
+
+  try {
+    // Get the current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    console.log("Current user:", user)
+    console.log("User error:", userError)
+    
+    if (userError || !user) {
+      throw new Error("Please login to save your mood")
+    }
+
+    const insertData = {
+      user_id: user.id,
+      mood_score: selectedMood,
+      energy_level: energyLevel || 3,
+      sleep_hours: sleepHours,
+      notes: notes || null
+    }
+
+    console.log("Inserting data:", insertData)
+
+    const { data, error } = await supabase.from('moods').insert(insertData).select()
+
+    if (error) {
+      console.error("Full error details:", error)
+      console.error("Error message:", error.message)
+      console.error("Error code:", error.code)
+      throw error
+    }
+
+    console.log("Insert successful:", data)
+
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+    
+    // Reset form
+    setSelectedMood(null)
+    setEnergyLevel(null)
+    setSleepHours(8)
+    setNotes("")
+    
+    // Refresh recent check-ins and AI insights
+    fetchRecentCheckins()
+    fetchAIInsights()
+    router.refresh()
+  } catch (err: any) {
+    console.error("Error saving check-in:", err)
+    setError(err.message)
+    alert(`Error: ${err.message}`)
+  } finally {
+    setLoading(false)
+  }
+}
+
+const moodEmojis = ["😢", "😟", "😐", "🙂", "😊"]  
 
   return (
     <AppLayout>
@@ -171,7 +173,7 @@ export default function TrackerPage() {
             <div className="space-y-3">
               <p className="text-sm font-medium text-foreground">Or rate numerically (1-5):</p>
               <div className="flex gap-2 flex-wrap">
-               {Array.from({ length: 5 }).map((_, i) => (
+                {Array.from({ length: 5 }).map((_, i) => (
                   <button
                     key={i + 1}
                     onClick={() => setSelectedMood(i + 1)}

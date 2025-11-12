@@ -5,7 +5,6 @@ export async function POST() {
   try {
     const supabase = await createClient()
     
-    // Get the current user
     const {
       data: { user },
       error: userError,
@@ -18,7 +17,6 @@ export async function POST() {
       )
     }
     
-    // Fetch last 7 days of mood data
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     
@@ -41,7 +39,6 @@ export async function POST() {
       })
     }
     
-    // Format data for AI
     const energyLabels = ["Very Low", "Low", "Medium", "High", "Very High"]
     const userSummary = weekData
       .map((d: any) => {
@@ -50,20 +47,19 @@ export async function POST() {
       })
       .join("\n")
     
-    // Calculate averages
     const avgMood = (weekData.reduce((sum, d) => sum + d.mood_score, 0) / weekData.length).toFixed(1)
     const avgSleep = (weekData.reduce((sum, d) => sum + d.sleep_hours, 0) / weekData.length).toFixed(1)
     
     // Call Gemini API
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `You are a warm, supportive wellness coach. Analyze this user's wellness data and provide encouraging insights.
+const response = await fetch(
+  `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: `You are a warm, supportive wellness coach. Analyze this user's wellness data and provide encouraging insights.
 
 Recent Check-ins (Last 7 Days):
 ${userSummary}
@@ -76,17 +72,11 @@ Provide:
 3. Encouraging closing words
 
 Keep it friendly and concise (4-5 sentences total). Use 1-2 relevant emojis. Focus on small, practical steps.`
-            }]
-          }]
-        })
-      }
-    )
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error("Gemini API error:", errorText)
-      throw new Error(`Gemini API error: ${response.status}`)
-    }
+        }]
+      }]
+    })
+  }
+)
     
     const data = await response.json()
     const suggestion = data.candidates?.[0]?.content?.parts?.[0]?.text || 
@@ -102,4 +92,3 @@ Keep it friendly and concise (4-5 sentences total). Use 1-2 relevant emojis. Foc
     )
   }
 }
-

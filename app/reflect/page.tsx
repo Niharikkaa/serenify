@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, Save } from "lucide-react"
+import { ChevronRight, Save, Loader2, X } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { format, startOfWeek, endOfWeek } from "date-fns"
 
 interface ReflectionPrompt {
   id: number
@@ -52,18 +54,100 @@ const reflectionPrompts: ReflectionPrompt[] = [
   },
 ]
 
+interface PastReflection {
+  id: string;
+  prompt: string;
+  response: string;
+  category: string;
+  week_start: string;
+  created_at: string;
+}
+
 export default function ReflectPage() {
   const [selectedPrompt, setSelectedPrompt] = useState<number | null>(null)
   const [responses, setResponses] = useState<{ [key: number]: string }>({})
   const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [pastReflections, setPastReflections] = useState<{[key: string]: PastReflection[]}>({})
+  const [selectedWeek, setSelectedWeek] = useState<string | null>(null)
+  const supabase = createClient()
+
+  const fetchPastReflections = async () => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError) throw userError
+
+      const { data, error } = await supabase
+        .from('reflections')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      // Group reflections by week
+      const groupedReflections = (data || []).reduce((acc: {[key: string]: PastReflection[]}, reflection: PastReflection) => {
+        const weekStart = format(startOfWeek(new Date(reflection.week_start)), 'yyyy-MM-dd')
+        if (!acc[weekStart]) {
+          acc[weekStart] = []
+        }
+        acc[weekStart].push(reflection)
+        return acc
+      }, {})
+
+      setPastReflections(groupedReflections)
+    } catch (err: any) {
+      console.error('Error fetching reflections:', err.message)
+    }
+  }
+
+  useEffect(() => {
+    fetchPastReflections()
+  }, [])
 
   const handleResponseChange = (id: number, value: string) => {
     setResponses((prev) => ({ ...prev, [id]: value }))
   }
 
-  const handleSave = () => {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleSave = async () => {
+    if (!selectedPrompt || !responses[selectedPrompt]) {
+      setError("Please write your reflection before saving")
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError) throw new Error("Please login to save your reflection")
+
+      const currentPrompt = reflectionPrompts.find(p => p.id === selectedPrompt)
+      if (!currentPrompt) throw new Error("Invalid prompt")
+
+      const weekStart = startOfWeek(new Date())
+      
+      const { error } = await supabase.from('reflections').insert({
+        user_id: user.id,
+        prompt: currentPrompt.question,
+        response: responses[selectedPrompt],
+        category: currentPrompt.category,
+        week_start: weekStart.toISOString()
+      })
+
+      if (error) throw error
+
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+      
+      // Refresh past reflections
+      fetchPastReflections()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const currentPromptId = selectedPrompt
@@ -133,11 +217,17 @@ export default function ReflectPage() {
                   <div className="flex gap-3">
                     <Button
                       onClick={handleSave}
+                      disabled={loading || saved}
                       className={`flex-1 transition-all ${
                         saved ? "bg-green-600 hover:bg-green-600" : "bg-accent hover:bg-accent/90"
                       } text-accent-foreground`}
                     >
-                      {saved ? (
+                      {loading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : saved ? (
                         <>
                           <Save className="w-4 h-4 mr-2" />
                           Response Saved
@@ -149,6 +239,9 @@ export default function ReflectPage() {
                         </>
                       )}
                     </Button>
+                    {error && (
+                      <p className="text-sm text-red-500 mt-2">{error}</p>
+                    )}
                   </div>
 
                   {/* Writing Tips */}
@@ -179,24 +272,68 @@ export default function ReflectPage() {
             <CardTitle>Past Reflections</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {[
-              { week: "This week", date: "Nov 1-7", responses: 4 },
-              { week: "Last week", date: "Oct 25 - Oct 31", responses: 6 },
-              { week: "2 weeks ago", date: "Oct 18 - Oct 24", responses: 6 },
-            ].map((reflection, index) => (
-              <div
-                key={index}
-                className="p-4 bg-muted/50 rounded-lg flex items-center justify-between hover:bg-muted transition-colors"
-              >
-                <div>
-                  <p className="text-foreground font-medium">{reflection.week}</p>
-                  <p className="text-xs text-foreground/60">{reflection.date}</p>
-                </div>
-                <p className="text-sm bg-accent/20 text-accent px-3 py-1 rounded-full">
-                  {reflection.responses}/{reflectionPrompts.length}
-                </p>
-              </div>
-            ))}
+            {Object.entries(pastReflections).map(([weekStart, reflections]) => {
+              const startDate = new Date(weekStart)
+              const endDate = endOfWeek(startDate)
+              const now = new Date()
+              const isThisWeek = startOfWeek(now).getTime() === startDate.getTime()
+              const isLastWeek = startOfWeek(new Date(now.setDate(now.getDate() - 7))).getTime() === startDate.getTime()
+              
+              let weekLabel
+              if (isThisWeek) {
+                weekLabel = "This week"
+              } else if (isLastWeek) {
+                weekLabel = "Last week"
+              } else {
+                weekLabel = format(startDate, 'MMM d') + " - " + format(endDate, 'MMM d')
+              }
+
+              return (
+                <button
+                  key={weekStart}
+                  onClick={() => setSelectedWeek(selectedWeek === weekStart ? null : weekStart)}
+                  className="w-full"
+                >
+                  <div className="p-4 bg-muted/50 rounded-lg flex items-center justify-between hover:bg-muted transition-colors">
+                    <div>
+                      <p className="text-foreground font-medium">{weekLabel}</p>
+                      <p className="text-xs text-foreground/60">{format(startDate, 'MMMM d, yyyy')}</p>
+                    </div>
+                    <p className="text-sm bg-accent/20 text-accent px-3 py-1 rounded-full">
+                      {reflections.length} responses
+                    </p>
+                  </div>
+                  
+                  {/* Expanded view of reflections */}
+                  {selectedWeek === weekStart && (
+                    <div className="mt-2 space-y-2 pl-4">
+                      {reflections.map((reflection) => (
+                        <div
+                          key={reflection.id}
+                          className="p-3 bg-muted/30 rounded-lg"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full">
+                              {reflection.category}
+                            </span>
+                            <span className="text-xs text-foreground/60">
+                              {format(new Date(reflection.created_at), 'MMM d, h:mm a')}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium mb-2">{reflection.prompt}</p>
+                          <p className="text-sm text-foreground/70">{reflection.response}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+            {Object.keys(pastReflections).length === 0 && (
+              <p className="text-center text-foreground/60 py-4">
+                No reflections yet. Start your wellness journey by answering the prompts!
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
