@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { Menu, X, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import Image from "next/image"
 
 export function MainNav() {
   const [isOpen, setIsOpen] = useState(false)
@@ -13,9 +14,11 @@ export function MainNav() {
       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-bold text-xl text-accent">
-          <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-            <span className="text-accent-foreground">S</span>
-          </div>
+          {/* <div className="w-20 h-20 bg-accent rounded-lg flex items-center justify-center"> */}
+          <Image src="/logo2.png" alt="Serenify Logo"
+            width={52}
+            height={20} />
+          {/* </div> */}
           <span>Serenify</span>
         </Link>
 
