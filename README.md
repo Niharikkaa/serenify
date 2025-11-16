@@ -1,30 +1,3 @@
-# Serenify wellness app UI
+# Serenify - An AI-Powered Wellness Tracker
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
-
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/niharbansal2006-8293s-projects/v0-serenify-wellness-app-ui)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/oMIbqbQffrg)
-
-## Overview
-
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
-
-## Deployment
-
-Your project is live at:
-
-**[https://vercel.com/niharbansal2006-8293s-projects/v0-serenify-wellness-app-ui](https://vercel.com/niharbansal2006-8293s-projects/v0-serenify-wellness-app-ui)**
-
-## Build your app
-
-Continue building your app on:
-
-**[https://v0.app/chat/oMIbqbQffrg](https://v0.app/chat/oMIbqbQffrg)**
-
-## How It Works
-
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+Serenify is a personal wellness and habit-tracking webapp that lets users log their moods, reflections, habits, and daily notes, helping them understand patterns, build consistency, and improve their overall wellbeing.

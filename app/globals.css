@@ -5,9 +5,9 @@
 
 :root {
   /* Updated color tokens for wellness theme */
-  --background: #011502;
+  --background: #167948;
   --foreground: #e8f0ed;
-  --card: #0d2b2f;
+  --card: #0c6875;
   --card-foreground: #e8f0ed;
   --popover: #0d2b2f;
   --popover-foreground: #e8f0ed;
@@ -68,7 +68,7 @@
   --chart-5: #6ba490;
   --sidebar: #0d2b2f;
   --sidebar-foreground: #e8f0ed;
-  --sidebar-primary: #104f55;
+  --sidebar-primary: #1d6269;
   --sidebar-primary-foreground: #e8f0ed;
   --sidebar-accent: #9ec5ab;
   --sidebar-accent-foreground: #01200f;
